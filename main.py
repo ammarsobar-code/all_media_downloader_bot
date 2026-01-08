@@ -15,28 +15,26 @@ def keep_alive():
 
 # --- 2. وظيفة التنظيف التلقائي (Auto-Clean) ---
 def auto_clean_environment():
-    """تنظيف الذاكرة المؤقتة لضمان استقرار بوت القائمة"""
+    """تنظيف الذاكرة المؤقتة لضمان استقرار البوت"""
     try:
-        # قتل أي عمليات معلقة قد تنشأ عن طريق الخطأ
-        if os.name != 'nt':
-            subprocess.run(["pkill", "-9", "-f", "python"], stderr=subprocess.DEVNULL)
-        print("🧹 Menu Bot Environment Cleaned")
-    except:
-        pass
+        # ملاحظة: pkill قد تغلق البوت نفسه إذا لم يتم تخصيصها، لذا يفضل تنظيف الـ Cache البرمجي
+        import gc
+        gc.collect() # تنظيف الذاكرة (Garbage Collection)
+        print("清理 🧹 Menu Bot Environment Cleaned")
+    except Exception as e:
+        print(f"Clean error: {e}")
 
-# --- 3. إعدادات البوت ---
+# --- 3. إعدادات البوت وروابط المنصات ---
 API_TOKEN = os.getenv('BOT_TOKEN') 
 bot = telebot.TeleBot(API_TOKEN)
 
-# روابط بوتاتك
 INSTA_BOT = "https://t.me/Insta_1Downloader_Bot"
 TIKTOK_BOT = "https://t.me/Tiktok_1Downloader_Bot"
 X_BOT = "https://t.me/X_1Downloader_Bot"
 SNAP_BOT = "https://t.me/Snap_1Downloader_Bot"
 
-# --- 4. معالج أمر البداية /start ---
-@bot.message_handler(commands=['start'])
-def main_menu(message):
+# --- 4. وظيفة إنشاء القائمة (لإعادة استخدامها) ---
+def send_main_menu(message):
     user_id = message.chat.id
     
     welcome_text = (
@@ -47,7 +45,6 @@ def main_menu(message):
     )
     
     markup = types.InlineKeyboardMarkup(row_width=2)
-    
     btn_insta = types.InlineKeyboardButton("انستجرام | Instagram 📸", url=INSTA_BOT)
     btn_tiktok = types.InlineKeyboardButton("تيك توك | TikTok 🎵", url=TIKTOK_BOT)
     btn_x = types.InlineKeyboardButton("منصة اكس | X (Twitter) 🐦", url=X_BOT)
@@ -55,15 +52,20 @@ def main_menu(message):
     
     markup.add(btn_insta, btn_tiktok, btn_x, btn_snap)
     
-    # تنظيف الذاكرة قبل إرسال الرسالة لضمان الاستجابة السريعة
+    # تنفيذ التنظيف قبل الإرسال
     auto_clean_environment()
     
     bot.send_message(user_id, welcome_text, reply_markup=markup, parse_mode='HTML')
 
-# --- 5. معالج لأي رسالة أخرى ---
+# --- 5. معالجة أمر البداية وأي رسالة أخرى ---
+@bot.message_handler(commands=['start'])
+def start_command(message):
+    send_main_menu(message)
+
 @bot.message_handler(func=lambda message: True)
-def hint(message):
-    bot.reply_to(message, "<b>يرجى استخدام القائمة في الأعلى للانتقال إلى البوت المطلوب 👆🏼</b>", parse_mode='HTML')
+def handle_all_messages(message):
+    # في حال أرسل المستخدم أي شيء، نعيد له القائمة الرئيسية
+    send_main_menu(message)
 
 # --- 6. التشغيل الآمن ---
 if __name__ == "__main__":
@@ -74,5 +76,5 @@ if __name__ == "__main__":
         pass
     time.sleep(1)
     print("Main Menu Bot is starting...")
-    # استخدام infinity_polling لضمان إعادة الاتصال التلقائي
-    bot.infinity_polling(timeout=20, long_polling_timeout=10, restart_on_change=False)
+    # infinity_polling تضمن استمرار البوت حتى لو حدث خطأ في الشبكة
+    bot.infinity_polling(timeout=20, long_polling_timeout=10)
